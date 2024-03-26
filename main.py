@@ -22,14 +22,16 @@ class MyStack(TerraformStack):
     def __init__(self, scope: Construct, ns: str):
         super().__init__(scope, ns)
 
+        # Defines the AWS provider and region
         AwsProvider(self, "AWS", region="us-west-2")
 
-        # Defines the s3 bucket to be used for static website hosting
+        # Defines the s3 bucket to be used for static website hosting and defines
+        # a name for the bucket called 'tutorial_static_website_s3'
         aws_s3_bucket = S3Bucket(self, "s3_bucket_static_website",
-            bucket="tutorial-static_website_s3",
+            bucket="tutorial-static-website-s3",
         )
         
-        # Defines the ownership control
+        # Defines the ownership control and references the s3 bucket created above
         aws_s3_bucket_ownership_controls_example = S3BucketOwnershipControls(self, "s3_bucket_ownership",
             bucket=aws_s3_bucket.id,
             rule=S3BucketOwnershipControlsRule(
@@ -37,7 +39,8 @@ class MyStack(TerraformStack):
             )
         )
         
-        # Defines the public access block and sets the block public
+        # Defines the public access block and sets the block public. It is also
+        # defined to references the s3 bucket created above
         aws_s3_bucket_public_access_block_example = S3BucketPublicAccessBlock(self, "s3_bucket_public_access",
             block_public_acls=False,
             block_public_policy=False,
@@ -46,16 +49,19 @@ class MyStack(TerraformStack):
             restrict_public_buckets=False
         )
         
-        # Defines the bucket acl and sets acl to public read. also references:
+        # Defines the bucket acl and sets acl to public read. The dependencies are
+        # set to:
         # aws_s3_bucket_ownership_controls_example
         # aws_s3_bucket_public_access_block_example
+        # and it also references the s3 bucket created above 
         aws_s3_bucket_acl_example = S3BucketAcl(self, "s3_bucket_acl",
             acl="public-read",
             bucket=aws_s3_bucket.id,
             depends_on=[aws_s3_bucket_ownership_controls_example,aws_s3_bucket_public_access_block_example]
         )
         
-        # Defines the bucket website configuration and sets the error/index htmls
+        # Defines the bucket website configuration and sets the error/index htmls.
+        # It also references the s3 bucket created above
         aws_s3_configuration = S3BucketWebsiteConfiguration(self, "s3_configuration",
             bucket=aws_s3_bucket.id,
             error_document=S3BucketWebsiteConfigurationErrorDocument(
@@ -66,7 +72,7 @@ class MyStack(TerraformStack):
             ),
         )
         
-        # Defines more access with data IAM policies and allows actions for all users
+        # Defines more access with data IAM policy and allows actions for all users
         allow_access_from_another_account = DataAwsIamPolicyDocument(self, "allow_access_from_another_account",
             statement=[DataAwsIamPolicyDocumentStatement(
                 actions=["s3:GetObject"],
@@ -80,13 +86,15 @@ class MyStack(TerraformStack):
             ]
         )
         
-        # Defines a second set of bucket policy
+        # Defines a second set of bucket policy and references the s3 bucket created above
+        # the policy is also referenced to the data IAM policy created above
         aws_s3_bucket_policy_allow_access_from_another_account = S3BucketPolicy(self, "allow_access_from_another_account_2",
             bucket=aws_s3_bucket.id,
             policy=Token.as_string(allow_access_from_another_account.json)
         )
         
-        # Defines the terraform output
+        # Defines the terraform output to display the s3 bucket informaiton:
+        # ARN, bucket_domain_name, and bucket_regional_domain_name
         TerraformOutput(self, "arn", value=aws_s3_bucket.arn)
         TerraformOutput(self, "bucket_domain_name", value=aws_s3_bucket.bucket_domain_name)
         TerraformOutput(self, "bucket_regional_domain_name", value=aws_s3_bucket.bucket_regional_domain_name)
